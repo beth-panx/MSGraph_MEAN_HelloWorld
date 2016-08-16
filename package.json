@@ -1,0 +1,13 @@
+{
+  "name"            : "msgraph-nodejs-sample",
+  "version"         : "0.0.0",
+  "description"     : "A HelloWorld project utilizing MS Graph API with MEAN stack",
+  "main"            : "app.js",
+  "author"          : "Beth Pan",
+  "dependencies" : {
+      "express"        : "~4.13.4",
+      "morgan"	       : "~1.7.0",
+  	  "body-parser"    : "~1.15.2",
+  	  "method-override": "~2.3.6"
+  }
+}
