@@ -1,13 +1,18 @@
 {
-  "name"            : "msgraph-nodejs-sample",
-  "version"         : "0.0.0",
-  "description"     : "A HelloWorld project utilizing MS Graph API with MEAN stack",
-  "main"            : "app.js",
-  "author"          : "Beth Pan",
-  "dependencies" : {
-      "express"        : "~4.13.4",
-      "morgan"	       : "~1.7.0",
-  	  "body-parser"    : "~1.15.2",
-  	  "method-override": "~2.3.6"
+  "name": "msgraph-nodejs-sample",
+  "version": "0.0.0",
+  "description": "A HelloWorld project utilizing MS Graph API with MEAN stack",
+  "main": "app.js",
+  "author": "Beth Pan",
+  "dependencies": {
+    "body-parser": "~1.15.2",
+    "cookie-parser": "~1.4.3",
+    "ejs": "^2.5.1",
+    "express": "~4.13.4",
+    "express-session": "~1.14.0",
+    "https": "~1.0.0",
+    "method-override": "~2.3.6",
+    "morgan": "~1.7.0",
+    "simple-oauth2": "~0.8.0"
   }
 }
