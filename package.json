@@ -13,6 +13,7 @@
     "https": "~1.0.0",
     "method-override": "~2.3.6",
     "morgan": "~1.7.0",
-    "simple-oauth2": "~0.8.0"
+    "simple-oauth2": "~0.8.0",
+    "uuid": "^2.0.2"
   }
 }

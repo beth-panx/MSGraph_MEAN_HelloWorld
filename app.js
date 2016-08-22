@@ -2,16 +2,27 @@
 var express  = require('express');
 var session  = require('express-session');
 var app      = express();
-var port  	 = process.env.PORT || 8080;
+var port  	 = process.env.PORT || 8443;
+var fs		 = require('fs');
+var https	 = require('https');
+var uuid	 =require('uuid');
 //var mongoose = require('mongoose');
 //var database = require('./config/database');
-var morgan = require('morgan'); 						// log requests to the console (express4)
-var bodyParser = require('body-parser'); 				// pull information from HTML POST (express4)
-var methodOverride = require('method-override'); 		// simulate DELETE and PUT (express4)
-var cookieParser = require('cookie-parser');
+var morgan 			= require('morgan'); 						// log requests to the console (express4)
+var bodyParser 		= require('body-parser'); 				// pull information from HTML POST (express4)
+var methodOverride 	= require('method-override'); 		// simulate DELETE and PUT (express4)
+var cookieParser 	= require('cookie-parser');
 var authHelper = require('./Utils/authHelper.js');
 var requestHelper = require('./Utils/requestHelper.js');
 var emailHelper = require('./Utils/emailHelper.js');
+
+var csrTokenCookie = 'csrf-token';
+var certConfig ={
+	key: fs.readFileSync('/Users/beth_panx/Documents/Development/Certs/server.key', 'utf8'),
+	cert: fs.readFileSync('/Users/beth_panx/Documents/Development/Certs/server.crt', 'utf8')
+};
+//create server
+var server = https.createServer(certConfig, app);
 
 // configuration ===============================================================
 //mongoose.connect(database.url); 	// connect to mongoDB database on modulus.io (v2.0)
@@ -30,7 +41,8 @@ app.use(session({
 	secret: 'sshhhhhh',
 	name: 'nodecookie',
 	resave: false,
-	saveUninitialized: false
+	saveUninitialized: false,
+	cookie: {secure: true}
 }));
 
 // app.use(function (req, res, next) {
@@ -46,33 +58,38 @@ app.use(session({
 var ACCESS_TOKEN_CACHE_KEY = 'ACCESS_TOKEN_CACHE_KEY';
 var REFRESH_TOKEN_CACHE_KEY = 'REFRESH_TOKEN_CACHE_KEY';
 
-app.get('/emailSender', function (req, res) {
-  // check for token
-	// if (req.cookies.REFRESH_TOKEN_CACHE_KEY === undefined) {
-	// 	res.redirect('login');
-	// } else {
-		sendEmail(req, res);
-
-	//}
+app.get('/token', function(req, res){
+	var csrfToken = req.query.state;
+	if(req.cookies[csrfTokenCookie] !== req.query.state) {
+		res.state(400).send('Invalid Authentication State.').end();
+		return;
+	}
+	authHelper.getTokenFromCode(req.query.code, function(e, token) {
+		if (e === null) {
+			req.session.aadToken = token;
+			res.redirect('/emailSender');
+		}
+		else {
+			console.log(JSON.parse(e.data).error_description);
+			res.status(500);
+			res.send();
+		}
+	})
 });
 
 app.get('/login', function (req, res) {
-	if(req.query.code !== undefined) {
-		authHelper.getTokenFromCode(req.query.code, function(e, accessToken, refreshToken) {
-			if (e === null) {
-				res.cookie(authHelper.ACCESS_TOKEN_CACHE_KEY, accessToken);
-				res.cookie(authHelper.REFRESH_TOKEN_CACHE_KEY, refreshToken);
-				res.redirect('/emailSender');
-			}
-			else {
-				console.log(JSON.parse(e.data).error_description);
-				res.status(500);
-				res.send();
-			}
-		})
-	}
-	else {
-		res.render('login',{ authUrl: authHelper.getAuthUrl()});
+	var csrfToken = uuid.v4();
+	res.cookie(csrTokenCookie, csrfToken);
+	res.redirect(authHelper.getAuthUrl(csrfToken));
+});
+
+app.get('/emailSender', function (req, res) {
+  //check for token
+	if (!req.session.aadToken) {
+		res.redirect('/login');
+	} else {
+		sendEmail(req, res);
+
 	}
 });
 
@@ -85,17 +102,17 @@ app.post('/emailSender', function (req, res) {
     	actual_recipient: destinationEmailAddress
 	};
 
-	requestHelper.postSendEmail(req.cookies.ACCESS_TOKEN_CACHE_KEY, JSON.stringify(mailBody), function(firstRequestError) {
+	requestHelper.postSendEmail(req.session.aadToken.token.access_token, JSON.stringify(mailBody), function(firstRequestError) {
 		if(!firstRequestError) {
-			res.render('emailSender', templateData);
+			res.redirect('/#/emailSender', templateData);
 		}
 		else if (hasAccessTokenExpired(firstRequestError)) {
-			authHelper.getTokenFromRefreshToken(req.cookies.REFRESH_TOKEN_CACHE_KEY, function(refreshError, accessToken) {
-				res.cookie(authHelper.ACCESS_TOKEN_CACHE_KEY, accessToken);
-				if (accessToken !== null) {
-					requestHelper.postSendEmail(req.cookies.ACCESS_TOKEN_CACHE_KEY, JSON.stringify(mailBody), function(secondRequestError) {
+			req.session.aadToken.token.refresh(function(refreshError, token) {
+				req.session.aadToken.token = token;
+				if (token !== null) {
+					requestHelper.postSendEmail(req.session.aadToken.token.access_token, JSON.stringify(mailBody), function(secondRequestError) {
 						if (!secondRequestError) {
-							res.render('emailSender', templateData);
+							res.redirect('/#/emailSender', templateData);
 						}
 						else {
 							clearCookies(res);
@@ -115,27 +132,27 @@ app.post('/emailSender', function (req, res) {
 });
 
 function sendEmail(req, res) {
-	requestHelper.getUserData(req.cookies.ACCESS_TOKEN_CACHE_KEY, function (firstRequestError, firstTryUser) {
+	requestHelper.getUserData(req.session.aadToken.token.access_token, function (firstRequestError, firstTryUser) {
 		if(firstTryUser !== null) {
 			req.session.user = firstTryUser;
 			var templateData = {
 				display_name: req.session.user.displayName,
 		    	user_principal_name: req.session.user.userPrincipalName
 			};
-			req.render('emailSender', templateData);
+			req.redirect('/#/emailSender', templateData);
 		}
 		else if (hasAccessTokenExpired(firstRequestError)) {
-			authHelper.getTokenFromRefreshToken(req.cookies.REFRESH_TOKEN_CACHE_KEY, function (refreshError, accessToken) {
-				res.cookie(authHelper.ACCESS_TOKEN_CACHE_KEY, accessToken);
-				if(accessToken !== null) {
-					requestHelper.getUserData(req.cookies.ACCESS_TOKEN_CACHE_KEY, function (secondRequestError, secondTryUser){
+			req.session.aadToken.token.refresh(function (refreshError, token) {
+				req.session.aadToken.token = token;
+				if(token !== null) {
+					requestHelper.getUserData(req.session.aadToken.token.access_token, function (secondRequestError, secondTryUser){
 						if(secondTryUser !== null) {
 							req.session.user = secondTryUser;
 							var templateData = {
 								display_name: req.session.user.displayName,
 						    	user_principal_name: req.session.user.userPrincipalName
 							};
-							req.render('emailSender', templateData);
+							req.redirect('/#/emailSender', templateData);
 						}
 						else {
 							clearCookies(res);
@@ -181,5 +198,5 @@ function renderError(res, e) {
 }
 
 // listen (start app with node app.js) ======================================
-app.listen(port);
+server.listen(port);
 console.log("Magic happens on port " + port);
