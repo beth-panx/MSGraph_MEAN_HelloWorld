@@ -16,7 +16,7 @@ var authHelper = require('./Utils/authHelper.js');
 var requestHelper = require('./Utils/requestHelper.js');
 var emailHelper = require('./Utils/emailHelper.js');
 
-var csrTokenCookie = 'csrf-token';
+var csrfTokenCookie = 'csrf-token';
 var certConfig ={
 	key: fs.readFileSync('./Utils/cert/server.key', 'utf8'),
 	cert: fs.readFileSync('./Utils/cert/server.crt', 'utf8')
@@ -79,7 +79,7 @@ app.get('/token', function(req, res){
 
 app.get('/login', function (req, res) {
 	var csrfToken = uuid.v4();
-	res.cookie(csrTokenCookie, csrfToken);
+	res.cookie(csrfTokenCookie, csrfToken);
 	res.redirect(authHelper.getAuthUrl(csrfToken));
 });
 
@@ -94,7 +94,7 @@ app.get('/emailSender', function (req, res) {
 });
 
 app.post('/emailSender', function (req, res) {
-	var destinationEmailAddress = req.body.default_mail;
+	var destinationEmailAddress = req.body.default_email;
 	var mailBody = emailHelper.generateMailBody(req.session.user.displayName, destinationEmailAddress);
 	var templateData = {
 		display_name: req.session.user.displayName,
@@ -102,17 +102,17 @@ app.post('/emailSender', function (req, res) {
     	actual_recipient: destinationEmailAddress
 	};
 
-	requestHelper.postSendEmail(req.session.aadToken.token.access_token, JSON.stringify(mailBody), function(firstRequestError) {
+	requestHelper.postSendMail(req.session.aadToken.token.access_token, JSON.stringify(mailBody), function(firstRequestError) {
 		if(!firstRequestError) {
-			res.redirect('/#/emailSender', templateData);
+			res.redirect('/#/emailSender');
 		}
 		else if (hasAccessTokenExpired(firstRequestError)) {
 			req.session.aadToken.token.refresh(function(refreshError, token) {
 				req.session.aadToken.token = token;
 				if (token !== null) {
-					requestHelper.postSendEmail(req.session.aadToken.token.access_token, JSON.stringify(mailBody), function(secondRequestError) {
+					requestHelper.postSendMail(req.session.aadToken.token.access_token, JSON.stringify(mailBody), function(secondRequestError) {
 						if (!secondRequestError) {
-							res.redirect('/#/emailSender', templateData);
+							res.redirect('/#/emailSender');
 						}
 						else {
 							clearCookies(res);
@@ -139,7 +139,7 @@ function sendEmail(req, res) {
 				display_name: req.session.user.displayName,
 		    	user_principal_name: req.session.user.userPrincipalName
 			};
-			req.redirect('/#/emailSender', templateData);
+			res.redirect('/#/emailSender');
 		}
 		else if (hasAccessTokenExpired(firstRequestError)) {
 			req.session.aadToken.token.refresh(function (refreshError, token) {
@@ -152,7 +152,7 @@ function sendEmail(req, res) {
 								display_name: req.session.user.displayName,
 						    	user_principal_name: req.session.user.userPrincipalName
 							};
-							req.redirect('/#/emailSender', templateData);
+							res.redirect('/#/emailSender');
 						}
 						else {
 							clearCookies(res);
