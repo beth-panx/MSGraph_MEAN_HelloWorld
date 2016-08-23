@@ -18,8 +18,8 @@ var emailHelper = require('./Utils/emailHelper.js');
 
 var csrTokenCookie = 'csrf-token';
 var certConfig ={
-	key: fs.readFileSync('/Users/beth_panx/Documents/Development/Certs/server.key', 'utf8'),
-	cert: fs.readFileSync('/Users/beth_panx/Documents/Development/Certs/server.crt', 'utf8')
+	key: fs.readFileSync('./Utils/cert/server.key', 'utf8'),
+	cert: fs.readFileSync('./Utils/cert/server.crt', 'utf8')
 };
 //create server
 var server = https.createServer(certConfig, app);
