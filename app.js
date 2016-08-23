@@ -5,7 +5,7 @@ var app      = express();
 var port  	 = process.env.PORT || 8443;
 var fs		 = require('fs');
 var https	 = require('https');
-var uuid	 =require('uuid');
+var uuid	 = require('uuid');
 //var mongoose = require('mongoose');
 //var database = require('./config/database');
 var morgan 			= require('morgan'); 						// log requests to the console (express4)
@@ -18,8 +18,8 @@ var emailHelper = require('./Utils/emailHelper.js');
 
 var csrTokenCookie = 'csrf-token';
 var certConfig ={
-	key: fs.readFileSync('/Users/beth_panx/Documents/Development/Certs/server.key', 'utf8'),
-	cert: fs.readFileSync('/Users/beth_panx/Documents/Development/Certs/server.crt', 'utf8')
+	key: fs.readFileSync('./Utils/cert/server.key', 'utf8'),
+	cert: fs.readFileSync('./Utils/cert/server.crt', 'utf8')
 };
 //create server
 var server = https.createServer(certConfig, app);
