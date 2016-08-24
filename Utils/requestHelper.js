@@ -25,10 +25,10 @@ module.exports = {
                 } 
                 else {
                     error = new Error();
-                    console.log("error.code", response.statusCode);
-                    console.log("error.message", response.statusMessage);
+                    error.code = response.statusCode;
+                    error.message = response.statusMessage;
                     body = body.trim();
-                    console.log("error.innerError", JSON.parse(body).error);
+                    error.innerError = JSON.parse(body).error;
                     callback(error, null);
                 }
             });

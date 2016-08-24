@@ -1,0 +1,17 @@
+doctype html
+html
+  head
+    title MSGraph MEAN
+    meta(charset='utf-8')
+    meta(name='viewport', content='width=device-width, initial-scale=1')
+    link(rel='stylesheet', href='https://appsforoffice.microsoft.com/fabric/1.0/fabric.css')
+    link(rel='stylesheet', href='https://appsforoffice.microsoft.com/fabric/1.0/fabric.components.css')
+    link(rel='stylesheet', href='/css/main.css')
+
+    script(src='//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js')
+    script(src='//ajax.googleapis.com/ajax/libs/angularjs/1.5.8/angular.min.js')
+    script(src='//ajax.googleapis.com/ajax/libs/angularjs/1.5.8/angular-route.js')
+    script(src='/js/controller.js')
+
+body.ms-Grid(ng-app='app')
+    block content

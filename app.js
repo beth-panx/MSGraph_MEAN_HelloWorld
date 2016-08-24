@@ -1,6 +1,7 @@
 // set up ======================================================================
 var express  = require('express');
 var session  = require('express-session');
+var stack 	 = require('./routes/stack');
 var app      = express();
 var port  	 = process.env.PORT || 8443;
 var fs		 = require('fs');
@@ -9,33 +10,31 @@ var uuid	 = require('uuid');
 //var mongoose = require('mongoose');
 //var database = require('./config/database');
 var morgan 			= require('morgan'); 						// log requests to the console (express4)
-var bodyParser 		= require('body-parser'); 				// pull information from HTML POST (express4)
-var methodOverride 	= require('method-override'); 		// simulate DELETE and PUT (express4)
+var bodyParser 		= require('body-parser'); 					// pull information from HTML POST (express4)
+var methodOverride 	= require('method-override'); 				// simulate DELETE and PUT (express4)
 var cookieParser 	= require('cookie-parser');
-var authHelper = require('./Utils/authHelper.js');
-var requestHelper = require('./Utils/requestHelper.js');
-var emailHelper = require('./Utils/emailHelper.js');
+var authHelper 		= require('./utils/authHelper.js');
+var requestHelper 	= require('./utils/requestHelper.js');
+var emailHelper 	= require('./utils/emailHelper.js');
 
 var csrfTokenCookie = 'csrf-token';
 var certConfig ={
 	key: fs.readFileSync('./Utils/cert/server.key', 'utf8'),
 	cert: fs.readFileSync('./Utils/cert/server.crt', 'utf8')
 };
-//create server
 var server = https.createServer(certConfig, app);
 
 // configuration ===============================================================
-//mongoose.connect(database.url); 	// connect to mongoDB database on modulus.io (v2.0)
+//mongoose.connect(database.url); 								// connect to mongoDB database on modulus.io (v2.0)
 app.use(express.static(__dirname + '/public')); 				// set the static files location /public/img will be /img for users
 app.use(morgan('dev')); 										// log every request to the console
 app.use(bodyParser.urlencoded({'extended':'true'})); 			// parse application/x-www-form-urlencoded
 app.use(bodyParser.json()); 									// parse application/json
 app.use(bodyParser.json({ type: 'application/vnd.api+json' })); // parse application/vnd.api+json as json
 app.use(methodOverride());
-app.engine('html', require('ejs').renderFile);
-app.set('view engine', 'ejs'); 
+app.set('view engine', 'jade'); 
 
-// application ======================================
+// application =================================================================
 app.use(cookieParser());
 app.use(session({
 	secret: 'sshhhhhh',
@@ -45,14 +44,12 @@ app.use(session({
 	cookie: {secure: true}
 }));
 
+app.get('/', stack.login);
+
 // app.use(function (req, res, next) {
 // 	var err = new Error('Not Found');
 // 	err.status = 404;
 // 	next(err);
-// });
-
-// app.get('*', function (req, res) {
-// 	res.sendFile(__dirname + '/public/index.html');
 // });
 
 var ACCESS_TOKEN_CACHE_KEY = 'ACCESS_TOKEN_CACHE_KEY';
@@ -84,27 +81,23 @@ app.get('/login', function (req, res) {
 });
 
 app.get('/emailSender', function (req, res) {
-  //check for token
 	if (!req.session.aadToken) {
-		res.redirect('/login');
+		res.render('login');
 	} else {
 		sendEmail(req, res);
-
 	}
 });
 
 app.post('/emailSender', function (req, res) {
-	var destinationEmailAddress = req.body.default_email;
-	var mailBody = emailHelper.generateMailBody(req.session.user.displayName, destinationEmailAddress);
 	var templateData = {
 		display_name: req.session.user.displayName,
-    	user_principal_name: req.session.user.userPrincipalName,
-    	actual_recipient: destinationEmailAddress
+    	user_principal_name: req.session.user.userPrincipalName
 	};
+	var mailBody = emailHelper.generateMailBody(templateData.display_name, templateData.user_principal_name);
 
 	requestHelper.postSendMail(req.session.aadToken.token.access_token, JSON.stringify(mailBody), function(firstRequestError) {
 		if(!firstRequestError) {
-			res.redirect('/#/emailSender');
+			res.render('emailSender', templateData);
 		}
 		else if (hasAccessTokenExpired(firstRequestError)) {
 			req.session.aadToken.token.refresh(function(refreshError, token) {
@@ -112,7 +105,7 @@ app.post('/emailSender', function (req, res) {
 				if (token !== null) {
 					requestHelper.postSendMail(req.session.aadToken.token.access_token, JSON.stringify(mailBody), function(secondRequestError) {
 						if (!secondRequestError) {
-							res.redirect('/#/emailSender');
+							res.render('emailSender', templateData);
 						}
 						else {
 							clearCookies(res);
@@ -139,7 +132,7 @@ function sendEmail(req, res) {
 				display_name: req.session.user.displayName,
 		    	user_principal_name: req.session.user.userPrincipalName
 			};
-			res.redirect('/#/emailSender');
+			res.render('emailSender', templateData);
 		}
 		else if (hasAccessTokenExpired(firstRequestError)) {
 			req.session.aadToken.token.refresh(function (refreshError, token) {
@@ -152,7 +145,7 @@ function sendEmail(req, res) {
 								display_name: req.session.user.displayName,
 						    	user_principal_name: req.session.user.userPrincipalName
 							};
-							res.redirect('/#/emailSender');
+							res.render('emailSender', templateData);
 						}
 						else {
 							clearCookies(res);
@@ -190,10 +183,10 @@ function clearCookies(res) {
 }
 
 function renderError(res, e) {
-	// res.render('error', {
-	// 	message: e.message,
-	// 	error: e
-	// });
+	res.render('error', {
+		message: e.message,
+		error: e
+	});
 	console.error(e);
 }
 
