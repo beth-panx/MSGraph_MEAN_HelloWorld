@@ -29,17 +29,6 @@ module.exports = {
 		});
 	},
 
-	// getAuthUrl: function() {
-	// 	return credentials.site + credentials.authorizationPath +
-	//     '?client_id=' + credentials.clientID +
-	//     '&response_type=code' +
-	//     '&redirect_uri=' + tokenConfig.redirect_uri +
-	//     '&scope=' + 'User.Read Mail.Send offline_access' +
-	//     '&response_mode=query' +
-	//     '&nonce=' + uuid.v4() +
-	//     '&state=abcd';
-	// },
-
 	getAuthUrl: function(csrfToken) {
 		return OAuth2.authCode.authorizeURL({
 			redirect_uri: 'https://local.vroov.com:8443/token',

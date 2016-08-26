@@ -14,8 +14,8 @@ var bodyParser 		= require('body-parser'); 					// pull information from HTML PO
 var methodOverride 	= require('method-override'); 				// simulate DELETE and PUT (express4)
 var cookieParser 	= require('cookie-parser');
 var authHelper 		= require('./utils/authHelper.js');
-var requestHelper 	= require('./utils/requestHelper.js');
 var emailHelper 	= require('./utils/emailHelper.js');
+var graph 			= require("./vendor/index.js");
 
 var csrfTokenCookie = 'csrf-token';
 var certConfig ={
@@ -45,12 +45,6 @@ app.use(session({
 }));
 
 app.get('/', stack.login);
-
-// app.use(function (req, res, next) {
-// 	var err = new Error('Not Found');
-// 	err.status = 404;
-// 	next(err);
-// });
 
 var ACCESS_TOKEN_CACHE_KEY = 'ACCESS_TOKEN_CACHE_KEY';
 var REFRESH_TOKEN_CACHE_KEY = 'REFRESH_TOKEN_CACHE_KEY';
@@ -89,78 +83,53 @@ app.get('/emailSender', function (req, res) {
 });
 
 app.post('/emailSender', function (req, res) {
-	var templateData = {
-		display_name: req.session.user.displayName,
-    	user_principal_name: req.session.user.userPrincipalName
-	};
-	var mailBody = emailHelper.generateMailBody(templateData.display_name, templateData.user_principal_name);
-
-	requestHelper.postSendMail(req.session.aadToken.token.access_token, JSON.stringify(mailBody), function(firstRequestError) {
-		if(!firstRequestError) {
-			res.render('emailSender', templateData);
-		}
-		else if (hasAccessTokenExpired(firstRequestError)) {
-			req.session.aadToken.token.refresh(function(refreshError, token) {
-				req.session.aadToken.token = token;
-				if (token !== null) {
-					requestHelper.postSendMail(req.session.aadToken.token.access_token, JSON.stringify(mailBody), function(secondRequestError) {
-						if (!secondRequestError) {
-							res.render('emailSender', templateData);
-						}
-						else {
-							clearCookies(res);
-							renderError(res, secondRequestError);
-						}
-					});
-				}
-				else {
-					renderError(res, refreshError);
-				}
-			});
-		}
-		else {
-			renderError(res, firstRequestError);
+	var client = graph.init({
+		defaultVersion: 'v1.0',
+		debugLogging: true,
+		authProvider: function(done) {
+			done(null, req.session.aadToken.token.access_token);
 		}
 	});
+	client.api('/me').select(["displayName", "userPrincipalName"]).get((err, me) => {
+        if (err) {
+            console.log(err);
+            return;
+        }
+		var templateData = {
+			display_name: me.displayName,
+			user_principal_name: me.userPrincipalName
+		};
+		var mailBody = emailHelper.generateMailBody(templateData.display_name, templateData.user_principal_name);
+		client.api('/users/me/sendMail').post(mailBody,(err, mail) => {
+			if (err){
+				console.log(err);
+				return;
+			}
+			else
+				console.log("Sent an email");
+				res.render('emailSender', templateData);
+		})
+    });
 });
 
 function sendEmail(req, res) {
-	requestHelper.getUserData(req.session.aadToken.token.access_token, function (firstRequestError, firstTryUser) {
-		if(firstTryUser !== null) {
-			req.session.user = firstTryUser;
-			var templateData = {
-				display_name: req.session.user.displayName,
-		    	user_principal_name: req.session.user.userPrincipalName
-			};
-			res.render('emailSender', templateData);
+	var client = graph.init({
+		defaultVersion: 'v1.0',
+		debugLogging: true,
+		authProvider: function(done) {
+			done(null, req.session.aadToken.token.access_token);
 		}
-		else if (hasAccessTokenExpired(firstRequestError)) {
-			req.session.aadToken.token.refresh(function (refreshError, token) {
-				req.session.aadToken.token = token;
-				if(token !== null) {
-					requestHelper.getUserData(req.session.aadToken.token.access_token, function (secondRequestError, secondTryUser){
-						if(secondTryUser !== null) {
-							req.session.user = secondTryUser;
-							var templateData = {
-								display_name: req.session.user.displayName,
-						    	user_principal_name: req.session.user.userPrincipalName
-							};
-							res.render('emailSender', templateData);
-						}
-						else {
-							clearCookies(res);
-							renderError(res, secondRequestError);
-						}
-					})
-				}
-				else {
-					renderError(res,refreshError);
-				}
-			})
+	});
+	client.api('/me').select(["displayName","userPrincipalName"]).get((err, me) => {
+		if (err) {
+			console.log(err)
+			return;
 		}
-		else {
-			renderError(res, firstRequestError);
-		}
+		var templateData = {
+			display_name: me.displayName,
+			user_principal_name: me.userPrincipalName
+		};
+		res.render('emailSender', templateData);
 	})
 }
 
