@@ -7,11 +7,9 @@ var port  	 = process.env.PORT || 8443;
 var fs		 = require('fs');
 var https	 = require('https');
 var uuid	 = require('uuid');
-//var mongoose = require('mongoose');
-//var database = require('./config/database');
-var morgan 			= require('morgan'); 						// log requests to the console (express4)
-var bodyParser 		= require('body-parser'); 					// pull information from HTML POST (express4)
-var methodOverride 	= require('method-override'); 				// simulate DELETE and PUT (express4)
+var morgan 			= require('morgan');
+var bodyParser 		= require('body-parser');
+var methodOverride 	= require('method-override');
 var cookieParser 	= require('cookie-parser');
 var authHelper 		= require('./utils/authHelper.js');
 var requestHelper 	= require('./utils/requestHelper.js');
@@ -25,16 +23,13 @@ var certConfig ={
 var server = https.createServer(certConfig, app);
 
 // configuration ===============================================================
-//mongoose.connect(database.url); 								// connect to mongoDB database on modulus.io (v2.0)
-app.use(express.static(__dirname + '/public')); 				// set the static files location /public/img will be /img for users
-app.use(morgan('dev')); 										// log every request to the console
-app.use(bodyParser.urlencoded({'extended':'true'})); 			// parse application/x-www-form-urlencoded
-app.use(bodyParser.json()); 									// parse application/json
-app.use(bodyParser.json({ type: 'application/vnd.api+json' })); // parse application/vnd.api+json as json
+app.use(express.static(__dirname + '/public'));
+app.use(morgan('dev'));
+app.use(bodyParser.urlencoded({'extended':'true'}));
+app.use(bodyParser.json());
+app.use(bodyParser.json({ type: 'application/vnd.api+json' }));
 app.use(methodOverride());
 app.set('view engine', 'jade'); 
-
-// application =================================================================
 app.use(cookieParser());
 app.use(session({
 	secret: 'sshhhhhh',
@@ -44,13 +39,8 @@ app.use(session({
 	cookie: {secure: true}
 }));
 
+// application =================================================================
 app.get('/', stack.login);
-
-// app.use(function (req, res, next) {
-// 	var err = new Error('Not Found');
-// 	err.status = 404;
-// 	next(err);
-// });
 
 var ACCESS_TOKEN_CACHE_KEY = 'ACCESS_TOKEN_CACHE_KEY';
 var REFRESH_TOKEN_CACHE_KEY = 'REFRESH_TOKEN_CACHE_KEY';
