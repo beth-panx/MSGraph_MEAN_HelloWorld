@@ -1,19 +1,19 @@
 // set up ======================================================================
-var express  		= require('express');
-var session  		= require('express-session');
-var stack 	 		= require('./routes/stack');
-var app      		= express();
-var port  	 		= process.env.PORT || 8443;
-var fs		 		= require('fs');
-var https	 		= require('https');
-var uuid	 		= require('uuid');
-var morgan 			= require('morgan');
-var bodyParser 		= require('body-parser');
-var methodOverride 	= require('method-override');
-var cookieParser 	= require('cookie-parser');
-var authHelper 		= require('./utils/authHelper.js');
-var emailHelper 	= require('./utils/emailHelper.js');
-var graph 			= require("./vendor/index.js");
+var express			= require('express');
+var session			= require('express-session');
+var stack			= require('./routes/stack');
+var app				= express();
+var port			= process.env.PORT || 8443;
+var fs				= require('fs');
+var https			= require('https');
+var uuid			= require('uuid');
+var morgan			= require('morgan');
+var bodyParser		= require('body-parser');
+var methodOverride	= require('method-override');
+var cookieParser	= require('cookie-parser');
+var authHelper		= require('./utils/authHelper.js');
+var emailHelper		= require('./utils/emailHelper.js');
+var graph			= require("./vendor/index.js");
 
 var csrfTokenCookie = 'csrf-token';
 var certConfig = {
