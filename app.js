@@ -1,26 +1,27 @@
 // set up ======================================================================
-var express			= require('express');
-var session			= require('express-session');
-var stack			= require('./routes/stack');
-var app				= express();
-var port			= process.env.PORT || 8443;
-var fs				= require('fs');
-var https			= require('https');
-var uuid			= require('uuid');
-var morgan			= require('morgan');
-var bodyParser		= require('body-parser');
-var methodOverride	= require('method-override');
-var cookieParser	= require('cookie-parser');
-var authHelper		= require('./utils/authHelper.js');
-var emailHelper		= require('./utils/emailHelper.js');
-var graph			= require("./vendor/index.js");
+const express = require('express');
+const session = require('express-session');
+const stack = require('./routes/stack');
+const app = express();
+const port = process.env.PORT || 8443;
+const fs = require('fs');
+const https	= require('https');
+const uuid = require('uuid');
+const morgan = require('morgan');
+const bodyParser = require('body-parser');
+const methodOverride = require('method-override');
+const cookieParser = require('cookie-parser');
+const authHelper = require('./utils/authHelper.js');
+const emailHelper = require('./utils/emailHelper.js');
+const graph = require("./vendor/index.js");
 
-var csrfTokenCookie = 'csrf-token';
-var certConfig = {
+const csrfTokenCookie = 'csrf-token';
+const certConfig = {
 	key: fs.readFileSync('./Utils/cert/server.key', 'utf8'),
 	cert: fs.readFileSync('./Utils/cert/server.crt', 'utf8')
 };
 var server = https.createServer(certConfig, app);
+
 // configuration ===============================================================					
 app.use(express.static(__dirname + '/public'));
 app.use(morgan('dev'));
