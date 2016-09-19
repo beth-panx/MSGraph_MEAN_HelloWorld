@@ -11,10 +11,10 @@ block content
     form(action='/emailSender', method='post')
       .ms-Grid-col.ms-u-mdPush1.ms-u-md9.ms-u-lgPush1.ms-u-lg6
         div
-          h2.ms-font-xxl.ms-fontWeight-semibold Hi, #{display_name}!
+          h2.ms-font-xxl.ms-fontWeight-semibold Hi, #{user.displayName}!
           p.ms-font-xl
             | You're now connected to Office 365. Click the button below to send a message from your account using the Microsoft Graph.
           .ms-TextField
-            input.ms-TextField-field(name='default_email', value='#{user_principal_name}')
+            input.ms-TextField-field(name='default_email', value='#{user.email}')
           button#send_mail_button.ms-Button
             span.ms-Button-label Send mail
