@@ -3,18 +3,7 @@ var emailContent = '<html><head> <meta http-equiv=\'Content-Type\' content=\'tex
 function getEmailContent(name) {
 	return emailContent.replace('{{name}}', name);
 };
-//  mail = {
-// 			subject: "MicrosoftGraph JavaScript SDK Samples",
-// 			toRecipients: [{
-// 				emailAddress: {
-// 					address: templateData.user_principal_name
-// 				}
-// 			}],
-// 			body: {
-// 				content: "<h1>MicrosoftGraph TypeScript Connect Sample</h1><br>https://github.com/microsoftgraph/msgraph-sdk-javascript",
-// 				contentType: "html"
-// 			}
-// 		}
+
 function wrapEmail(content, recipient) {
 	var emailAsPayload = {
 		Message: {

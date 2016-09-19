@@ -38,6 +38,7 @@ passport.deserializeUser(function(id, done) {
 
 // array to hold logged in users
 var users = [];
+var myAccessToken;
 
 var findByEmail = function(email, fn) {
 	for (var i = 0, len = users.length; i < len; i++) {
@@ -50,7 +51,6 @@ var findByEmail = function(email, fn) {
 	console.log("no user found.");
 	return fn(null, null);
 };
-
 
 // Use the OIDCStrategy within Passport. (Section 2) 
 // 
@@ -72,20 +72,21 @@ passport.use(new OIDCStrategy({
       return done(new Error("No email found"), null);
     }
 
+	myAccessToken = accessToken;
+
 	findByEmail(profile.email, function(err, user) {
-	if (err) {
-		return done(err);
-	}
-	if (!user) {
-		// "Auto-registration"
-		console.log("new user added");
-		console.log(profile);
-		console.log(accessToken);
-		users.push(profile);
-		return done(null, profile);
-	}
-	return done(null, user);
+		if (err) {
+			return done(err);
+		}
+		if (!user) {
+			// "Auto-registration"
+			users.push(profile);
+			console.log("added new user..");
+			return done(null, profile);
+		}
+		return done(null, user);
 	});
+
   }
 ));
 
@@ -108,37 +109,41 @@ app.use(session({
 	cookie: {secure: true}
 }));
 
-
-
 // application =================================================================
 app.get('/', stack.login);
 
-app.get('/login',passport.authenticate('azuread-openidconnect', { failureRedirect: '/login' }),
+app.get('/login',
+	passport.authenticate('azuread-openidconnect', { failureRedirect: '/' }),
 	function (req, res) {
-		console.log("login page...");
 		res.redirect('/');
 });
 
-app.get('/token', passport.authenticate('azuread-openidconnect', { failureRedirect: '/' }), function(req, res){ 
-	//console.log("In token...");
-	//console.log(req.user);
-	//console.log(req.user.displayName);
-	//console.log(req.user.email);
-	
-	res.render('emailSender', { user: req.user});
+app.get('/token', 
+	passport.authenticate('azuread-openidconnect', { failureRedirect: '/' }), 
+	function(req, res){ 
+		console.log("In token...");
+
+		sendEmail(req, res);
+		res.render('emailSender', { user: req.user});
 });
 
-app.get('/emailSender', passport.authenticate('azuread-openidconnect', { failureRedirect: '/' }), function (req, res) {
-	sendEmail(req, res);
+app.get('/emailSender', 
+	passport.authenticate('azuread-openidconnect', { failureRedirect: '/' }), 
+	function (req, res) {
+		res.render('emailSender', { user: req.user});
 });
 
-app.post('/emailSender', passport.authenticate('azuread-openidconnect', { failureRedirect: '/' }), function (req, res) {
-	var client = graph.init({
-		defaultVersion: 'v1.0',
-		debugLogging: true,
-		authProvider: function(done) {
-			done(null, req.session.accessToken);
-		}
+app.post('/emailSender',
+	passport.authenticate('azuread-openidconnect', { failureRedirect: '/' }), 
+	function (req, res) {
+		console.log(myAccessToken);
+		console.log("trying to send email..");
+		var client = graph.init({
+			defaultVersion: 'v1.0',
+			debugLogging: true,
+			authProvider: function(done) {
+				done(null, myAccessToken);
+			}
 	});
 	console.log("sending email..");
 	client.api('/me').select(["displayName", "userPrincipalName"]).get((err, me) => {
@@ -164,21 +169,26 @@ app.post('/emailSender', passport.authenticate('azuread-openidconnect', { failur
 });
 
 function sendEmail(req, res) {
+	console.log(myAccessToken);
 	var client = graph.init({
 		defaultVersion: 'v1.0',
 		debugLogging: true,
 		authProvider: function(done) {
-			done(null, req.session.accessToken);
+			done(null, myAccessToken);
 		}
 	});
-	client.api('/me').select(["displayName","userPrincipalName"]).get((err, me) => {
+	console.log("in sendemail..");
+	client.api('/me').get((err, res) => {
+		cosole.log(res);
+	})
+	client.api('/me').select(["displayName"]).get((err, me) => {
 		if (err) {
-			console.log(err)
+			console.log(err);
 			return;
 		}
 		var templateData = {
 			display_name: me.displayName,
-			user_principal_name: me.userPrincipalName
+			//user_principal_name: me.email
 		};
 		res.render('emailSender', templateData);
 	})
@@ -198,6 +208,7 @@ function ensureAuthenticated(req, res, next) {
 		console.log("successfully authenticated!");
 		return next();  
 	}
+	res.redirect('/login');
 	console.log("Some shit happened");
 
 }
