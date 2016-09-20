@@ -26,69 +26,39 @@ const app = express();
 const server = https.createServer(certConfig, app);
 
 // authentication =================================================================
-passport.serializeUser(function(user, done) {
-	done(null, user.email);
-});
 
-passport.deserializeUser(function(id, done) {
-	findByEmail(id, function (err, user) {
-		done(err, user);
-	});
-});
+const config = {
+    callbackURL: 'https://local.vroov.com:8443/token',
+	clientID: '1b18af48-c6a5-46b2-98a2-e03ba4654a33',
+    clientSecret: 'M59ant5z5ZzZ96LS8EGOdwS',
+    identityMetadata: 'https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration',
+    skipUserProfile: true,
+    responseType: 'code',
+	validateIssuer: false,
+    responseMode: 'query',
+	scope: ['User.Read', 'Mail.Send', 'Profile']
+  };
 
-// array to hold logged in users
-var users = [];
-var myAccessToken;
-
-var findByEmail = function(email, fn) {
-	for (var i = 0, len = users.length; i < len; i++) {
-		var user = users[i];
-		if (user.email === email) {
-			console.log("found user");
-			return fn(null, user);
-		}
-	}
-	console.log("no user found.");
-	return fn(null, null);
+function callback (iss, sub, profile, accessToken, refreshToken, done) {
+	done (null, {
+		profile,
+		accessToken,
+		refreshToken
+	})
 };
 
-// Use the OIDCStrategy within Passport. (Section 2) 
-// 
-//   Strategies in passport require a `validate` function, which accept
-//   credentials (in this case, an OpenID identifier), and invoke a callback
-//   with a user object.
-passport.use(new OIDCStrategy({
-    callbackURL: 'https://local.vroov.com:8443/token',
-    clientID: '1b18af48-c6a5-46b2-98a2-e03ba4654a33',
-    clientSecret: 'M59ant5z5ZzZ96LS8EGOdwS',
-    identityMetadata: 'https://login.microsoftonline.com/common/.well-known/openid-configuration',
-    skipUserProfile: true,
-    responseType: 'id_token code',
-	validateIssuer: false,
-    responseMode: 'query'
-  },
-  function(iss, sub, profile, accessToken, refreshToken, done) {
-    if (!profile.email) {
-      return done(new Error("No email found"), null);
-    }
+passport.use(new OIDCStrategy(config, callback));
 
-	myAccessToken = accessToken;
-
-	findByEmail(profile.email, function(err, user) {
-		if (err) {
-			return done(err);
-		}
-		if (!user) {
-			// "Auto-registration"
-			users.push(profile);
-			console.log("added new user..");
-			return done(null, profile);
-		}
-		return done(null, user);
-	});
-
-  }
-));
+const users = {};
+passport.serializeUser((user, done) => {
+    const id = uuid.v4();
+    users[id] = user;
+    done(null, id);
+});
+passport.deserializeUser((id, done) => {
+    const user = users[id];
+    done(null, user)
+});
 
 // configuration ===============================================================					
 app.use(express.static(__dirname + '/public'));
@@ -98,8 +68,6 @@ app.use(bodyParser.json());
 app.use(bodyParser.json({ type: 'application/vnd.api+json' }));
 app.use(methodOverride());
 app.set('view engine', 'jade');
-app.use(passport.initialize());
-app.use(passport.session());
 app.use(cookieParser());
 app.use(session({
 	secret: 'sshhhhhh',
@@ -108,6 +76,8 @@ app.use(session({
 	saveUninitialized: false,
 	cookie: {secure: true}
 }));
+app.use(passport.initialize());
+app.use(passport.session());
 
 // application =================================================================
 app.get('/', stack.login);
@@ -121,41 +91,31 @@ app.get('/login',
 app.get('/token', 
 	passport.authenticate('azuread-openidconnect', { failureRedirect: '/' }), 
 	function(req, res){ 
-		console.log("In token...");
-
-		sendEmail(req, res);
-		res.render('emailSender', { user: req.user});
+		res.render('emailSender', { user: req.user.profile});
 });
 
-app.get('/emailSender', 
-	passport.authenticate('azuread-openidconnect', { failureRedirect: '/' }), 
-	function (req, res) {
-		res.render('emailSender', { user: req.user});
-});
+// app.get('/emailSender', 
+// 	passport.authenticate('azuread-openidconnect', { failureRedirect: '/' }), 
+// 	function (req, res) {
+// 		res.render('emailSender', { user: req.user.profile});
+// });
 
 app.post('/emailSender',
-	passport.authenticate('azuread-openidconnect', { failureRedirect: '/' }), 
-	function (req, res) {
-		console.log(myAccessToken);
-		console.log("trying to send email..");
+	ensureAuthenticated,
+	function initGraph(req, res) {
 		var client = graph.init({
 			defaultVersion: 'v1.0',
 			debugLogging: true,
 			authProvider: function(done) {
-				done(null, myAccessToken);
+				done(null, req.user.accessToken);
 			}
 	});
-	console.log("sending email..");
 	client.api('/me').select(["displayName", "userPrincipalName"]).get((err, me) => {
         if (err) {
             console.log(err);
             return;
         }
-		var templateData = {
-			display_name: me.displayName,
-			user_principal_name: me.userPrincipalName
-		};
-		var mailBody = emailHelper.generateMailBody(templateData.display_name, templateData.user_principal_name);
+		var mailBody = emailHelper.generateMailBody(me.displayName, me.userPrincipalName);
 		client.api('/users/me/sendMail').post(mailBody,(err, mail) => {
 			if (err){
 				console.log(err);
@@ -163,35 +123,20 @@ app.post('/emailSender',
 			}
 			else
 				console.log("Sent an email");
-				res.render('emailSender', templateData);
+				res.render('emailSender', { user: req.user.profile});
 		})
     });
 });
 
-function sendEmail(req, res) {
-	console.log(myAccessToken);
-	var client = graph.init({
-		defaultVersion: 'v1.0',
-		debugLogging: true,
-		authProvider: function(done) {
-			done(null, myAccessToken);
-		}
-	});
-	console.log("in sendemail..");
-	client.api('/me').get((err, res) => {
-		cosole.log(res);
-	})
-	client.api('/me').select(["displayName"]).get((err, me) => {
-		if (err) {
-			console.log(err);
-			return;
-		}
-		var templateData = {
-			display_name: me.displayName,
-			//user_principal_name: me.email
-		};
-		res.render('emailSender', templateData);
-	})
+
+// listen (start app with node app.js) ======================================
+server.listen(port);
+console.log("Magic happens here: https://local.vroov.com:" + port);
+
+function ensureAuthenticated(req, res, next) {
+    if (req.isAuthenticated()) { return next(); }
+	console.log("aaahhhhhh!!!!");
+    res.redirect('/login');
 }
 
 function renderError(res, e) {
@@ -201,18 +146,3 @@ function renderError(res, e) {
 	});
 	console.error(e);
 }
-
-function ensureAuthenticated(req, res, next) { 
-	console.log("ensuring...");
-	if (req.isAuthenticated()) { 
-		console.log("successfully authenticated!");
-		return next();  
-	}
-	res.redirect('/login');
-	console.log("Some shit happened");
-
-}
-
-// listen (start app with node app.js) ======================================
-server.listen(port);
-console.log("Magic happens here: https://local.vroov.com:" + port);
