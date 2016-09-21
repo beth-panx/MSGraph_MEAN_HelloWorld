@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) Microsoft. All rights reserved. Licensed under the MIT license.
+ * See LICENSE in the project root for license information.
+ */
+
+'use strict';
 // set up ======================================================================
 const express = require('express');
 const session = require('express-session');
@@ -25,7 +31,7 @@ const app = express();
 const server = https.createServer(certConfig, app);
 
 // authentication =================================================================
-function callback (iss, sub, profile, accessToken, refreshToken, done) {
+var callback = (iss, sub, profile, accessToken, refreshToken, done) => {
 	done (null, {
 		profile,
 		accessToken,
@@ -71,46 +77,46 @@ app.get('/', stack.login);
 
 app.get('/login',
 	passport.authenticate('azuread-openidconnect', { failureRedirect: '/' }),
-	function (req, res) {
+	(req, res) => {
 		res.redirect('/');
 });
 
 app.get('/token', 
 	passport.authenticate('azuread-openidconnect', { failureRedirect: '/' }), 
-	function(req, res){ 
+	(req, res) => { 
 		res.render('emailSender', { user: req.user.profile});
 });
 
 app.post('/emailSender',
 	ensureAuthenticated,
-	function initGraph(req, res) {
+	(req, res) => {
 		var client = graph.init({
 			defaultVersion: 'v1.0',
 			debugLogging: true,
-			authProvider: function(done) {
+			authProvider: function (done) {
 				done(null, req.user.accessToken);
 			}
-	});
-	client.api('/me').select(["displayName", "userPrincipalName"]).get((err, me) => {
-        if (err) {
-            renderError(res, err);
-            return;
-        }
-		var mailBody = emailHelper.generateMailBody(me.displayName, me.userPrincipalName);
-		client.api('/users/me/sendMail').post(mailBody,(err, mail) => {
-			if (err){
+		});
+		client.api('/me').select(["displayName", "userPrincipalName"]).get((err, me) => {
+			if (err) {
 				renderError(res, err);
 				return;
 			}
-			else
-				console.log("Sent an email");
-				res.render('emailSender', { user: req.user.profile, status: "success"});
-		})
-    });
+			const mailBody = emailHelper.generateMailBody(me.displayName, me.userPrincipalName);
+			client.api('/users/me/sendMail').post(mailBody,(err, mail) => {
+				if (err){
+					renderError(res, err);
+					return;
+				}
+				else
+					console.log("Sent an email");
+					res.render('emailSender', { user: req.user.profile, status: "success"});
+			})
+		});
 });
 
-app.get('/logout', function (req, res) {
-  req.session.destroy(function(err) {
+app.get('/logout', (req, res) => {
+  req.session.destroy( (err) => {
     req.logOut();
     res.redirect('https://login.microsoftonline.com/common/oauth2/logout?post_logout_redirect_uri=https://local.vroov.com:8443');
   });
@@ -120,15 +126,15 @@ app.get('/logout', function (req, res) {
 server.listen(port);
 console.log("Magic happens here: https://local.vroov.com:" + port);
 
-function ensureAuthenticated(req, res, next) {
+function ensureAuthenticated (req, res, next) {
     if (req.isAuthenticated()) { return next(); }
 
 	console.log("aaahhhhhh!!!!");
-    res.redirect('/login');
+    res.render('/login');
 };
 
 // error handling ===========================================================
-function renderError(res, e) {
+function renderError (res, e) {
 	res.render('error', {
 		message: e.message,
 		error: e
