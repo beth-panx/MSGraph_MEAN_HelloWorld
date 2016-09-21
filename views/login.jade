@@ -1,7 +1,7 @@
 extends layout
 
 block content
-  .ms-Grid(ng-controller='LoginController')
+  .ms-Grid
     .ms-Grid-row
       .ms-NavBar
         ul.ms-NavBar-items
@@ -9,5 +9,5 @@ block content
       .ms-Grid-col.ms-u-mdPush1.ms-u-md9.ms-u-lgPush1.ms-u-lg6
         div
           p.ms-font-xl Use the button below to connect to Office 365.
-          button#connect_button.ms-Button(ng-click='redirectToLogin()')
+          button#connect_button.ms-Button(onclick="window.location.href='login'")
             span.ms-Button-label Connect to Office 365

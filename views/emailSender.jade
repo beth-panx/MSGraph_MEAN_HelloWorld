@@ -1,11 +1,11 @@
 extends layout
 
 block content
-  .ms-Grid-row(ng-controller='EmailSenderController')
+  .ms-Grid-row
     .ms-NavBar
       ul.ms-NavBar-items
         li.navbar-header Office 365 Connect sample
-        li#disconnect_link.ms-NavBar-item.ms-NavBar-item--right(onclick="window.location.href='disconnect'")
+        li#disconnect_link.ms-NavBar-item.ms-NavBar-item--right(onclick="window.location.href='logout'")
           i.ms-Icon.ms-Icon--x
           |  Disconnect
     form(action='/emailSender', method='post')
@@ -18,3 +18,6 @@ block content
             input.ms-TextField-field(name='default_email', value='#{user.email}')
           button#send_mail_button.ms-Button
             span.ms-Button-label Send mail
+          if status == "success"
+            div
+              p.ms-font-m.ms-fontColor-green Successfully sent an email!

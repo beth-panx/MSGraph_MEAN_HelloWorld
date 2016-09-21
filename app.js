@@ -2,7 +2,6 @@
 const express = require('express');
 const session = require('express-session');
 const stack = require('./routes/stack');
-
 const port = process.env.PORT || 8443;
 const fs = require('fs');
 const https = require('https');
@@ -14,9 +13,9 @@ const cookieParser = require('cookie-parser');
 const passport = require('passport');
 const OIDCStrategy = require('passport-azure-ad').OIDCStrategy;
 const emailHelper = require('./utils/emailHelper.js');
+const config = require('./utils/config.js');
 const graph = require("./vendor/index.js");
 
-const csrfTokenCookie = 'csrf-token';
 const certConfig = {
 	key: fs.readFileSync('./Utils/cert/server.key', 'utf8'),
 	cert: fs.readFileSync('./Utils/cert/server.crt', 'utf8')
@@ -26,19 +25,6 @@ const app = express();
 const server = https.createServer(certConfig, app);
 
 // authentication =================================================================
-
-const config = {
-    callbackURL: 'https://local.vroov.com:8443/token',
-	clientID: '1b18af48-c6a5-46b2-98a2-e03ba4654a33',
-    clientSecret: 'M59ant5z5ZzZ96LS8EGOdwS',
-    identityMetadata: 'https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration',
-    skipUserProfile: true,
-    responseType: 'code',
-	validateIssuer: false,
-    responseMode: 'query',
-	scope: ['User.Read', 'Mail.Send', 'Profile']
-  };
-
 function callback (iss, sub, profile, accessToken, refreshToken, done) {
 	done (null, {
 		profile,
@@ -47,7 +33,7 @@ function callback (iss, sub, profile, accessToken, refreshToken, done) {
 	})
 };
 
-passport.use(new OIDCStrategy(config, callback));
+passport.use(new OIDCStrategy(config.creds, callback));
 
 const users = {};
 passport.serializeUser((user, done) => {
@@ -79,6 +65,7 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+
 // application =================================================================
 app.get('/', stack.login);
 
@@ -94,12 +81,6 @@ app.get('/token',
 		res.render('emailSender', { user: req.user.profile});
 });
 
-// app.get('/emailSender', 
-// 	passport.authenticate('azuread-openidconnect', { failureRedirect: '/' }), 
-// 	function (req, res) {
-// 		res.render('emailSender', { user: req.user.profile});
-// });
-
 app.post('/emailSender',
 	ensureAuthenticated,
 	function initGraph(req, res) {
@@ -112,22 +93,28 @@ app.post('/emailSender',
 	});
 	client.api('/me').select(["displayName", "userPrincipalName"]).get((err, me) => {
         if (err) {
-            console.log(err);
+            renderError(res, err);
             return;
         }
 		var mailBody = emailHelper.generateMailBody(me.displayName, me.userPrincipalName);
 		client.api('/users/me/sendMail').post(mailBody,(err, mail) => {
 			if (err){
-				console.log(err);
+				renderError(res, err);
 				return;
 			}
 			else
 				console.log("Sent an email");
-				res.render('emailSender', { user: req.user.profile});
+				res.render('emailSender', { user: req.user.profile, status: "success"});
 		})
     });
 });
 
+app.get('/logout', function (req, res) {
+  req.session.destroy(function(err) {
+    req.logOut();
+    res.redirect('https://login.microsoftonline.com/common/oauth2/logout?post_logout_redirect_uri=https://local.vroov.com:8443');
+  });
+});
 
 // listen (start app with node app.js) ======================================
 server.listen(port);
@@ -135,14 +122,16 @@ console.log("Magic happens here: https://local.vroov.com:" + port);
 
 function ensureAuthenticated(req, res, next) {
     if (req.isAuthenticated()) { return next(); }
+
 	console.log("aaahhhhhh!!!!");
     res.redirect('/login');
-}
+};
 
+// error handling ===========================================================
 function renderError(res, e) {
 	res.render('error', {
 		message: e.message,
 		error: e
 	});
 	console.error(e);
-}
+};

@@ -28,5 +28,5 @@ module.exports = {
  	generateMailBody: function(name, recipient) {
   		return wrapEmail(getEmailContent(name), recipient);
 	}
-}
+};
 
