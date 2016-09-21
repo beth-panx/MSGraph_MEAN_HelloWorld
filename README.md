@@ -15,7 +15,7 @@
 
 This sample shows how to connect a Node.js app to a Microsoft work or school (Azure Active Directory) or personal (Microsoft) account using the Microsoft Graph API and [the Graph JavaScript SDK](https://github.com/microsoftgraph/msgraph-sdk-javascript) to send an email. In addition, the sample uses the Office Fabric UI for styling and formatting the user experience.
 
-![Microsoft Graph Connect Sample for Node.js screenshot](./public/img/screenshot.PNG)
+![Microsoft Graph Connect Sample for Node.js screenshot](./public/img/screenshot.png)
 
 ## Prerequisites
 
