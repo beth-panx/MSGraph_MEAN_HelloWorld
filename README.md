@@ -6,7 +6,6 @@
 * [Prerequisites](#prerequisites)
 * [Register the application](#register-the-application)
 * [Build and run the sample](#build-and-run-the-sample)
-* [Code of note](#code-of-note)
 * [Questions and comments](#questions-and-comments)
 * [Contributing](#contributing)
 * [Additional resources](#additional-resources)
@@ -23,7 +22,7 @@ To use the Microsoft Graph Connect Sample for Node.js, you need the following:
 
  * [Node.js](https://nodejs.org/) version 4 or 5.
 
- * Either a [Microsoft account](https://www.outlook.com) or [Office 365 for business account](https://msdn.microsoft.com/en-us/office/office365/howto/setup-development-environment#bk_Office365Account)
+ * Either a [Microsoft account](https://www.outlook.com/) or a [work or school account](http://dev.office.com/devprogram)
 
 ## Register the application
 
