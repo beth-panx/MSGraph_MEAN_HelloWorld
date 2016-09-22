@@ -23,8 +23,8 @@ const config = require('./utils/config.js');
 const graph = require("./vendor/index.js");
 
 const certConfig = {
-	key: fs.readFileSync('./Utils/cert/server.key', 'utf8'),
-	cert: fs.readFileSync('./Utils/cert/server.crt', 'utf8')
+	key: fs.readFileSync('./utils/cert/server.key', 'utf8'),
+	cert: fs.readFileSync('./utils/cert/server.crt', 'utf8')
 };
 
 const app = express();
@@ -57,7 +57,6 @@ app.use(express.static(__dirname + '/public'));
 app.use(morgan('dev'));
 app.use(bodyParser.urlencoded({'extended':'true'}));
 app.use(bodyParser.json());
-app.use(bodyParser.json({ type: 'application/vnd.api+json' }));
 app.use(methodOverride());
 app.set('view engine', 'jade');
 app.use(cookieParser());
@@ -102,7 +101,7 @@ app.post('/emailSender',
 				renderError(res, err);
 				return;
 			}
-			const mailBody = emailHelper.generateMailBody(me.displayName, me.userPrincipalName);
+			const mailBody = emailHelper.generateMailBody(me.displayName, req.body.input_email);
 			client.api('/users/me/sendMail').post(mailBody,(err, mail) => {
 				if (err){
 					renderError(res, err);
@@ -129,7 +128,6 @@ console.log("Magic happens here: https://local.vroov.com:" + port);
 function ensureAuthenticated (req, res, next) {
     if (req.isAuthenticated()) { return next(); }
 
-	console.log("aaahhhhhh!!!!");
     res.render('/login');
 };
 
