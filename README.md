@@ -62,7 +62,7 @@ To use the Microsoft Graph Connect Sample for Node.js, you need the following:
 
 5. Run the following command to start the development server.
 
-  ```npm start```
+  ```node app.js```
 
 6. Navigate to `https://local.vroov.com:8443/` in your web browser.
 

@@ -3,6 +3,15 @@
  * See LICENSE in the project root for license information.
  */
 
+/*
+ * This sample uses an open source OAuth 2.0 library that is compatible with the Azure AD v2.0 endpoint.
+ * Microsoft does not provide fixes or direct support for this library.
+ * Refer to the library’s repository to file issues or for other support.
+ * For more information about auth libraries see: 
+ * https://azure.microsoft.com/documentation/articles/active-directory-v2-libraries/
+ * Library repo:  https://github.com/jaredhanson/passport
+ */
+
 'use strict';
 // set up ======================================================================
 const express = require('express');
@@ -62,7 +71,7 @@ app.set('view engine', 'jade');
 app.use(cookieParser());
 app.use(session({
 	secret: 'sshhhhhh',
-	name: 'nodecookie',
+	name: 'graphNodeCookie',
 	resave: false,
 	saveUninitialized: false,
 	cookie: {secure: true}
@@ -117,7 +126,9 @@ app.post('/emailSender',
 app.get('/logout', (req, res) => {
   req.session.destroy( (err) => {
     req.logOut();
-    res.redirect('https://login.microsoftonline.com/common/oauth2/logout?post_logout_redirect_uri=https://local.vroov.com:8443');
+	res.clearCookie('graphNodeCookie');
+	res.status(200);
+	res.redirect('https://local.vroov.com:' + port);
   });
 });
 
